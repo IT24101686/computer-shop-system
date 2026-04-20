@@ -1,43 +1,87 @@
-import React from 'react';
+import { Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
-function App() {
+// Auth & Shared
+// Auth & Shared
+import LoginPage from "./pages/auth/login";
+import RegisterPage from "./pages/auth/register";
+import ProfilePage from "./pages/customer/profile";
+
+// Role pages
+import HomePage from "./pages/customer/home";                              // customer (public)
+import ProductsPage from "./pages/product/productsPage";                  // all products
+import ProductDetailPage from "./pages/product/productDetailPage";         // product detail
+import CartPage from "./pages/order/cartPage";                          // cart
+import CheckoutPage from "./pages/order/checkoutPage";                  // checkout
+import MyOrdersPage from "./pages/customer/myOrdersPage";                  // my orders
+import InvoicePage from "./pages/order/invoicePage";                    // invoice
+import MyPaymentHistoryPage from "./pages/payment/myPaymentHistoryPage";   // payment history
+import MyWarrantyClaims from "./pages/customer/myWarrantyClaims";          // warranty claims
+import OrderPage from "./pages/order/order";                            // customer
+import AdminPage from "./pages/admin/admin";                            // admin
+import SupplierDashboard from "./pages/supplier/supplier";                 // supplier
+import InventoryManagerDashboard from "./pages/inventoryManager/index"; // inventoryManager
+
+// Route guard
+import ProtectedRoute from "./components/ProtectedRoute";
+
+
+
+export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden min-h-[60vh] flex flex-col md:flex-row">
-        {/* Left Side (Banner) */}
-        <div className="md:w-1/2 bg-blue-600 text-white p-12 flex flex-col items-start justify-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-blue-500 opacity-50 blur-2xl"></div>
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-48 h-48 rounded-full bg-blue-700 opacity-50 blur-2xl"></div>
-          
-          <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 drop-shadow-md">
-              TechMart <span className="text-blue-200">Shop</span>
-            </h1>
-            <p className="text-lg text-blue-100 font-medium leading-relaxed">
-              Your ultimate destination for premium computer hardware, accessories, and builds.
-            </p>
-          </div>
-        </div>
+    <div className="bg-primary text-secondary">
+      <Toaster position="top-right" />
+      <Routes>
 
-        {/* Right Side (Content) */}
-        <div className="md:w-1/2 p-12 flex flex-col justify-center items-center text-center">
-          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Project Initialized!</h2>
-          <p className="text-gray-500 mb-8 max-w-sm">
-            Frontend and Backend have been successfully connected and set up with React, Vite, Express & MongoDB.
-          </p>
-          
-          <button className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-            Start Building
-          </button>
-        </div>
-      </div>
+        {/* ── Public Routes ── */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* ── Customer (logged in - any role can view home) ── */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/products/:id" element={<ProductDetailPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/my-orders" element={<MyOrdersPage />} />
+        <Route path="/invoice/:orderId" element={<InvoicePage />} />
+        <Route path="/payment-history" element={<MyPaymentHistoryPage />} />
+        <Route path="/my-warranty" element={<MyWarrantyClaims />} />
+        <Route path="/order" element={
+          <ProtectedRoute allowedRoles={["customer", "admin"]}>
+            <OrderPage />
+          </ProtectedRoute>
+        } />
+
+        {/* ── Profile (all logged-in roles) ── */}
+        <Route path="/profile" element={
+          <ProtectedRoute allowedRoles={["admin", "supplier", "inventoryManager", "customer"]}>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
+
+        {/* ── Admin Only ── */}
+        <Route path="/admin/*" element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminPage />
+          </ProtectedRoute>
+        } />
+
+        {/* ── Supplier Only ── */}
+        <Route path="/supplier/*" element={
+          <ProtectedRoute allowedRoles={["supplier"]}>
+            <SupplierDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* ── Inventory Manager Only ── */}
+        <Route path="/inventory/*" element={
+          <ProtectedRoute allowedRoles={["inventoryManager"]}>
+            <InventoryManagerDashboard />
+          </ProtectedRoute>
+        } />
+
+      </Routes>
     </div>
   );
 }
-
-export default App;

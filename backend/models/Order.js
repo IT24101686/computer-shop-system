@@ -1,41 +1,65 @@
-const mongoose = require('mongoose');
-
-const orderItemSchema = new mongoose.Schema({
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    name: { type: String, required: true },
-    price: { type: Number, required: true },
-    quantity: { type: Number, required: true },
-});
-
-const deliveryLocationSchema = new mongoose.Schema({
-    latitude: { type: Number, required: true },
-    longitude: { type: Number, required: true },
-    streetAddress: { type: String, required: true }
-});
-
-const deliveryVehicleLocationSchema = new mongoose.Schema({
-    latitude: { type: Number },
-    longitude: { type: Number }
-});
+import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema({
-    customerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+    orderId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    userEmail: {
+        type: String,
         required: true
     },
-    productItems: [orderItemSchema],
+    items: [
+        {
+            productId: { type: String, required: true },
+            name: { type: String, required: true },
+            price: { type: Number, required: true },
+            quantity: { type: Number, required: true, min: 1 },
+            image: { type: String }
+        }
+    ],
     totalAmount: {
         type: Number,
         required: true
     },
-    deliveryStatus: {
-        type: String,
-        enum: ['Pending', 'Processing', 'Out for Delivery', 'Delivered'],
-        default: 'Pending'
+    shippingAddress: {
+        firstName: { type: String, required: true },
+        lastName: { type: String, required: true },
+        address: { type: String, required: true },
+        city: { type: String, required: true },
+        phone: { type: String, required: true }
     },
-    deliveryLocation: deliveryLocationSchema,
-    deliveryVehicleLocation: deliveryVehicleLocationSchema
-}, { timestamps: true });
+    secondaryAddress: {
+        address: { type: String, default: "" },
+        city: { type: String, default: "" },
+        phone: { type: String, default: "" },
+        note: { type: String, default: "" }
+    },
+    paymentMethod: {
+        type: String,
+        enum: ["Cash on Delivery", "Online Payment"],
+        default: "Cash on Delivery"
+    },
+    paymentStatus: {
+        type: String,
+        enum: ["Pending", "Paid", "Refunded"],
+        default: "Pending"
+    },
+    status: {
+        type: String,
+        enum: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+        default: "Pending"
+    },
+    trackingNumber: { type: String, default: "" },
+    courierService: { type: String, default: "" },
+    adminNotes: { type: String, default: "" },
+    orderedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
 
-module.exports = mongoose.model('Order', orderSchema);
+const Order = mongoose.model("Order", orderSchema);
+
+export default Order;

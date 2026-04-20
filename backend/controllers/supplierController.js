@@ -1,140 +1,101 @@
-const Supplier = require('../models/Supplier');
+import User from "../models/user.js";
+import bcrypt from "bcrypt";
+
+// Add a new supplier
+export function addSupplier(req, res) {
+    const supplierData = req.body;
+
+    // Force role to be supplier
+    supplierData.role = "supplier";
+
+    // Hash the password if provided
+    if (supplierData.password) {
+        supplierData.password = bcrypt.hashSync(supplierData.password, 10);
+    }
+
+    const supplier = new User(supplierData);
+
+    supplier.save()
+        .then((savedSupplier) => {
+            // Remove password from response
+            savedSupplier.password = undefined;
+            return res.status(201).json({
+                message: "Supplier added successfully",
+                supplier: savedSupplier
+            });
+        })
+        .catch((error) => {
+            return res.status(500).json({ error: "Error adding supplier", details: error.message });
+        });
+}
 
 // Get all suppliers
-const getSuppliers = async (req, res) => {
-    try {
-        const suppliers = await Supplier.find({});
-        res.json(suppliers);
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error fetching suppliers' });
-    }
-};
-
-// Get a single supplier by ID
-const getSupplierById = async (req, res) => {
-    try {
-        const supplier = await Supplier.findById(req.params.id);
-
-        if (!supplier) {
-            return res.status(404).json({ message: 'Supplier not found' });
-        }
-
-        res.json({
-            name: supplier.name,
-            phone: supplier.phoneNumber || supplier.phone,
-            currentLocation: supplier.currentLocation
+export function getSuppliers(req, res) {
+    // Only get users with the role "supplier"
+    User.find({ role: "supplier" }, { password: 0 }) // Exclude password
+        .then((suppliers) => {
+            return res.status(200).json(suppliers);
+        })
+        .catch((error) => {
+            return res.status(500).json({ error: "Error retrieving suppliers", details: error.message });
         });
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error fetching supplier' });
-    }
-};
+}
 
-// Add a single supplier
-const addSupplier = async (req, res) => {
-    try {
-        const { name, contactPerson, email, phone, status, phoneNumber, currentLocation } = req.body;
+// Get a single supplier by email
+export function getSupplierByEmail(req, res) {
+    const email = req.params.email;
 
-        if (!name || !contactPerson || !email || !phone) {
-            return res.status(400).json({ message: 'Please provide all required fields' });
-        }
-
-        const supplierExists = await Supplier.findOne({ email });
-        if (supplierExists) {
-            return res.status(400).json({ message: 'Supplier with that email already exists' });
-        }
-
-        const supplier = await Supplier.create({
-            name,
-            contactPerson,
-            email,
-            phone,
-            phoneNumber: phoneNumber || phone,
-            status: status || 'Active',
-            currentLocation: currentLocation || { lat: 0, lng: 0 }
+    User.findOne({ email: email, role: "supplier" }, { password: 0 })
+        .then((supplier) => {
+            if (!supplier) {
+                return res.status(404).json({ error: "Supplier not found" });
+            }
+            return res.status(200).json(supplier);
+        })
+        .catch((error) => {
+            return res.status(500).json({ error: "Error retrieving supplier", details: error.message });
         });
+}
 
-        res.status(201).json(supplier);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error adding supplier' });
+// Update supplier details
+export function updateSupplier(req, res) {
+    const email = req.params.email;
+    const updateData = req.body;
+
+    // Security measure: Do not allow changing the role to something else via this endpoint
+    if (updateData.role) {
+        updateData.role = "supplier";
     }
-};
 
-// Update a supplier
-const updateSupplier = async (req, res) => {
-    try {
-        const supplier = await Supplier.findById(req.params.id);
-
-        if (!supplier) {
-            return res.status(404).json({ message: 'Supplier not found' });
-        }
-
-        const updatedSupplier = await Supplier.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
-
-        res.json(updatedSupplier);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error updating supplier' });
+    // Hash password if updating password
+    if (updateData.password) {
+        updateData.password = bcrypt.hashSync(updateData.password, 10);
     }
-};
 
-// Update a supplier location
-const updateSupplierLocation = async (req, res) => {
-    try {
-        const { lat, lng } = req.body;
-
-        if (lat === undefined || lng === undefined) {
-            return res.status(400).json({ message: 'Latitude and Longitude are required' });
-        }
-
-        const supplier = await Supplier.findById(req.params.id);
-
-        if (!supplier) {
-            return res.status(404).json({ message: 'Supplier not found' });
-        }
-
-        supplier.currentLocation = { lat, lng };
-        const updatedSupplier = await supplier.save();
-
-        // Emit real-time update
-        const io = req.app.get('io');
-        if (io) {
-            io.emit('locationUpdate', {
-                supplierId: updatedSupplier._id,
-                currentLocation: updatedSupplier.currentLocation
-            });
-        }
-
-        res.json(updatedSupplier);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error updating location' });
-    }
-};
+    User.updateOne({ email: email, role: "supplier" }, updateData)
+        .then((result) => {
+            if (result.matchedCount === 0) {
+                return res.status(404).json({ error: "Supplier not found" });
+            }
+            return res.status(200).json({ message: "Supplier updated successfully" });
+        })
+        .catch((error) => {
+            return res.status(500).json({ error: "Error updating supplier", details: error.message });
+        });
+}
 
 // Delete a supplier
-const deleteSupplier = async (req, res) => {
-    try {
-        const supplier = await Supplier.findById(req.params.id);
+export function deleteSupplier(req, res) {
+    const email = req.params.email;
 
-        if (!supplier) {
-            return res.status(404).json({ message: 'Supplier not found' });
-        }
-
-        await Supplier.findByIdAndDelete(req.params.id);
-
-        res.json({ message: 'Supplier removed' });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error deleting supplier' });
-    }
-};
-
-module.exports = {
-    getSuppliers,
-    getSupplierById,
-    addSupplier,
-    updateSupplier,
-    updateSupplierLocation,
-    deleteSupplier
-};
+    User.deleteOne({ email: email, role: "supplier" })
+        .then((result) => {
+            if (result.deletedCount === 0) {
+                return res.status(404).json({ error: "Supplier not found" });
+            }
+            return res.status(200).json({ message: "Supplier deleted successfully" });
+        })
+        .catch((error) => {
+            return res.status(500).json({ error: "Error deleting supplier", details: error.message });
+        });
+}
